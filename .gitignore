@@ -4,3 +4,4 @@ build/
 *.obj
 CMakeCache.txt
 CMakeFiles/
+beatoven.conf

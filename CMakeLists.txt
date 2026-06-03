@@ -10,6 +10,7 @@ qt_standard_project_setup()
 
 qt_add_executable(BeatOven
     main.cpp
+    beatoven.conf
 
 )
 
