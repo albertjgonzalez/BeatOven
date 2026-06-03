@@ -21,7 +21,8 @@ struct Config {
 
 void setConfigValues(Config& cfg) {
     std::cout << "Setting Config Values" << std::endl;
-    std::filesystem::path configLocation = "./beatoven.conf";
+    auto appPath = QCoreApplication::applicationDirPath().toStdString();
+    std::filesystem::path configLocation = appPath + "./beatoven.conf";
     std::ifstream readconfig(configLocation);
     if (!readconfig.is_open()) {
         std::cout << "Error: config file could not open." << std::endl;
