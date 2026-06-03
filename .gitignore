@@ -3,5 +3,4 @@ build/
 *.o
 *.obj
 CMakeCache.txt
-CMakeLists.txt
 CMakeFiles/
