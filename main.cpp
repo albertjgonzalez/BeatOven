@@ -49,7 +49,7 @@ void setConfigValues(Config& cfg) {
 
 void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects, Config& cfg) {
 	QTcpSocket socket;
-    QString hostName {"192.168.1.107"};
+    QString hostName = QString::fromStdString(cfg.connectString);
     quint16 port {8000};
 
 	socket.connectToHost(hostName,port);
@@ -79,7 +79,8 @@ void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects, 
             //send header -> amount of projects, other meta info
             //header.append(std::to_string(count));
 
-             socket.write(header.c_str());
+            socket.write(header.c_str(), header.size());
+             socket.waitForBytesWritten();
 
             // for (const auto& p : localProjects) {
 
@@ -100,10 +101,13 @@ void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects, 
             // }
 
             //all of projects sent
-            std::string completedMessage {"this is the end bye."};
+            // std::string completedMessage {"this is the end bye."};
 
-            socket.write(completedMessage.c_str());
-            socket.waitForBytesWritten();
+            // socket.write(completedMessage.c_str());
+            //socket.waitForBytesWritten();
+        }
+        else {
+            std::cout << "Error: " << socket.error() << std::endl;
         }
     }
 }
@@ -149,7 +153,9 @@ int main(int argc, char *argv[]) {
         auto socket = server.nextPendingConnection();
         socket->write("Hello\n");
         socket->waitForBytesWritten(30000);
-        //socket->waitForReadyRead();
+        socket->waitForReadyRead();
+        QByteArray text = socket->readAll();
+            std::cout << text.toStdString() << std::endl;
         //while (socket->canReadLine()) {
         //    QByteArray text = socket->readLine();
         //    std::cout << text.toStdString() << std::endl;
