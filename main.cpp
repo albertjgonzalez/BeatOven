@@ -36,7 +36,8 @@ void setConfigValues(Config& cfg) {
 
         std::string key = configValue.substr(0, pos);
         std::string value = configValue.substr(pos+1);
-        if (key=="LocalProjectsDirectory") {
+        //if (key=="LocalProjectsDirectory") {
+        if (key == "TempProjectsDirectory") { // for testing
             cfg.LocalProjectsDirectory = value;
         }
     }
@@ -58,16 +59,47 @@ void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects) 
         if (socket.waitForReadyRead()) {
             std::cout << "Socket waiting for read" << std::endl;
 
-            QByteArray text = socket.readAll();
-            std::cout << text.toStdString() << std::endl;
-            std::string res {"helloback"};
+            //eventually have token to validate session
+            QByteArray token = socket.readAll();
+            std::cout << token.toStdString() << std::endl;
 
-            socket.write(res.c_str(), res.size());
-            socket.waitForBytesWritten();
+            //create header info
+            std::string header {""};
+            int count{0};
+
+            for (const auto& p : localProjects) {
+                ++count;
+                QFile projectFolder = QFile(p);
+            }
+
+            //send header -> amount of projects, other meta info
+            header.append(std::to_string(count));
+
+            socket.write(header.c_str());
+
             for (const auto& p : localProjects) {
 
+                QFile projectFile = QFile(p);
+                if (!projectFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                    std::cout << "Error: could not open project: " << p.filename() << std::endl;
+                    return;
+                }
+
+
+                while (!projectFile.atEnd()) {
+                    QByteArray line = projectFile.readLine();
+                    std::cout << line.toStdString() << std::endl;
+                    socket.write(line);
+                    socket.waitForBytesWritten();
+                }
                 //std::cout << p.relative_path() << std::endl;
             }
+
+            //all of projects sent
+            std::string completedMessage {"this is the end bye."};
+
+            socket.write(completedMessage.c_str());
+            socket.waitForBytesWritten();
         }
     }
 }
@@ -109,19 +141,20 @@ int main(int argc, char *argv[]) {
     }
 
     QObject::connect(&server, &QTcpServer::newConnection, [&server](){
-        std::cout << "Connection Made-------------" << std::endl;
+        std::cout << "Connection Made." << std::endl;
         auto socket = server.nextPendingConnection();
         socket->write("Hello\n");
         socket->waitForBytesWritten(30000);
         socket->waitForReadyRead();
-        QByteArray text = socket->readAll();
-        std::cout << text.toStdString() << std::endl;
-    });
+        while (socket->canReadLine()) {
+            QByteArray text = socket->readLine();
+            std::cout << text.toStdString() << std::endl;
+        }
 
+    });
 
     auto localProjects = getLocalProjects(config);
     sendLocalProjects(localProjects);
-	
 
 
     QWidget window;
