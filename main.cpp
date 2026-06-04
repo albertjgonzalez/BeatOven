@@ -68,18 +68,18 @@ void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects, 
             std::cout << token.toStdString() << std::endl;
 
             //create header info
-            std::string header {""};
+            std::string header {"header"};
             int count{0};
 
-            for (const auto& p : localProjects) {
-                ++count;
-                QFile projectFolder = QFile(p);
-            }
+            // for (const auto& p : localProjects) {
+            //     ++count;
+            //     QFile projectFolder = QFile(p);
+            // }
 
             //send header -> amount of projects, other meta info
-            header.append(std::to_string(count));
+            //header.append(std::to_string(count));
 
-            // socket.write(header.c_str());
+             socket.write(header.c_str());
 
             // for (const auto& p : localProjects) {
 
