@@ -14,6 +14,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QFile>
+#include <QIODevice>
 
 struct Config {
     std::string LocalProjectsDirectory;
@@ -43,7 +44,7 @@ void setConfigValues(Config& cfg) {
 
 void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects) {
 	QTcpSocket socket;
-    QString hostName {"192.0.0.1"};
+    QString hostName {"192.168.1.107"};
     quint16 port {8000};
 
 	socket.connectToHost(hostName,port);
@@ -51,9 +52,24 @@ void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects) 
 	if (!socket.isValid()) std::cout << "Socket is not valid" << std::endl;
 	
 	std::cout << "Sending Local Projects: " << std::endl;
-	for (const auto& p : localProjects) {
-		std::cout << p.relative_path() << std::endl;
-	}
+    if (socket.waitForConnected()) {
+        std::cout << "Socket Ready for connection" << std::endl;
+
+        if (socket.waitForReadyRead()) {
+            std::cout << "Socket waiting for read" << std::endl;
+
+            QByteArray text = socket.readAll();
+            std::cout << text.toStdString() << std::endl;
+            std::string res {"helloback"};
+
+            socket.write(res.c_str(), res.size());
+            socket.waitForBytesWritten();
+            for (const auto& p : localProjects) {
+
+                //std::cout << p.relative_path() << std::endl;
+            }
+        }
+    }
 }
 
 std::vector<std::filesystem::path> getLocalProjects(Config& cfg) {
@@ -97,11 +113,14 @@ int main(int argc, char *argv[]) {
         auto socket = server.nextPendingConnection();
         socket->write("Hello\n");
         socket->waitForBytesWritten(30000);
+        socket->waitForReadyRead();
+        QByteArray text = socket->readAll();
+        std::cout << text.toStdString() << std::endl;
     });
 
 
     auto localProjects = getLocalProjects(config);
-    //sendLocalProjects(localProjects);
+    sendLocalProjects(localProjects);
 	
 
 
