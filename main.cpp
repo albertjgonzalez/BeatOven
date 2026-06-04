@@ -79,25 +79,25 @@ void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects, 
             //send header -> amount of projects, other meta info
             header.append(std::to_string(count));
 
-            socket.write(header.c_str());
+            // socket.write(header.c_str());
 
-            for (const auto& p : localProjects) {
+            // for (const auto& p : localProjects) {
 
-                QFile projectFile = QFile(p);
-                if (!projectFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-                    std::cout << "Error: could not open project: " << p.filename() << std::endl;
-                    return;
-                }
+            //     QFile projectFile = QFile(p);
+            //     if (!projectFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            //         std::cout << "Error: could not open project: " << p.filename() << std::endl;
+            //         return;
+            //     }
 
 
-                while (!projectFile.atEnd()) {
-                    QByteArray line = projectFile.readLine();
-                    std::cout << line.toStdString() << std::endl;
-                    socket.write(line);
-                    socket.waitForBytesWritten();
-                }
-                //std::cout << p.relative_path() << std::endl;
-            }
+            //     while (!projectFile.atEnd()) {
+            //         QByteArray line = projectFile.readLine();
+            //         std::cout << line.toStdString() << std::endl;
+            //         socket.write(line);
+            //         socket.waitForBytesWritten();
+            //     }
+            //     //std::cout << p.relative_path() << std::endl;
+            // }
 
             //all of projects sent
             std::string completedMessage {"this is the end bye."};
@@ -149,11 +149,11 @@ int main(int argc, char *argv[]) {
         auto socket = server.nextPendingConnection();
         socket->write("Hello\n");
         socket->waitForBytesWritten(30000);
-        socket->waitForReadyRead();
-        while (socket->canReadLine()) {
-            QByteArray text = socket->readLine();
-            std::cout << text.toStdString() << std::endl;
-        }
+        //socket->waitForReadyRead();
+        //while (socket->canReadLine()) {
+        //    QByteArray text = socket->readLine();
+        //    std::cout << text.toStdString() << std::endl;
+        //}
 
     });
 
