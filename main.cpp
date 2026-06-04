@@ -24,7 +24,7 @@ struct Config {
 void setConfigValues(Config& cfg) {
     std::cout << "Setting Config Values" << std::endl;
     auto appPath = QCoreApplication::applicationDirPath().toStdString();
-    std::filesystem::path configLocation = appPath + "./beatoven.conf";
+    std::filesystem::path configLocation = std::filesystem::path(appPath) / "beatoven.conf";
     std::ifstream readconfig(configLocation);
     if (!readconfig.is_open()) {
         std::cout << "Error: config file could not open." << std::endl;
@@ -128,12 +128,12 @@ std::vector<std::filesystem::path> getLocalProjects(Config& cfg) {
 }
 
 int main(int argc, char *argv[]) {
-
+    QApplication app(argc, argv);
     Config config;
 
     setConfigValues(config);
 
-    QApplication app(argc, argv);
+
 
     quint16 port {8000};
     QTcpServer server;
@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
     });
 
     auto localProjects = getLocalProjects(config);
-    sendLocalProjects(localProjects, config);
+    //sendLocalProjects(localProjects, config);
 
 
     QWidget window;
