@@ -145,12 +145,14 @@ int main(int argc, char *argv[]) {
     std::cout << "Starting Server.." << std::endl;
     if (!server.listen(QHostAddress::Any, port)) {
         auto e = server.errorString();
-        std::cout << "e.toStdString()" << std::endl;
+        std::cout << e.toStdString() << std::endl;
     }
 
     QObject::connect(&server, &QTcpServer::newConnection, [&server](){
         std::cout << "Connection Made." << std::endl;
         auto socket = server.nextPendingConnection();
+        if (!socket) { std::cout << "null socket" << std::endl; return; }
+
         socket->write("Hello\n");
         socket->waitForBytesWritten(30000);
         socket->waitForReadyRead();
