@@ -18,6 +18,7 @@
 
 struct Config {
     std::string LocalProjectsDirectory;
+    std::string connectString;
 };
 
 void setConfigValues(Config& cfg) {
@@ -40,10 +41,13 @@ void setConfigValues(Config& cfg) {
         if (key == "TempProjectsDirectory") { // for testing
             cfg.LocalProjectsDirectory = value;
         }
+        if (key == "ConnectionString") {
+            cfg.connectString = value;
+        }
     }
 }
 
-void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects) {
+void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects, Config& cfg) {
 	QTcpSocket socket;
     QString hostName {"192.168.1.107"};
     quint16 port {8000};
@@ -154,7 +158,7 @@ int main(int argc, char *argv[]) {
     });
 
     auto localProjects = getLocalProjects(config);
-    sendLocalProjects(localProjects);
+    sendLocalProjects(localProjects, config);
 
 
     QWidget window;
@@ -170,8 +174,8 @@ int main(int argc, char *argv[]) {
     layout->addWidget(label);
     layout->addWidget(button);
 
-    QObject::connect(button, &QPushButton::clicked, [&localProjects](){
-            sendLocalProjects(localProjects);
+    QObject::connect(button, &QPushButton::clicked, [&localProjects, &config](){
+            sendLocalProjects(localProjects, config);
     });
 
     window.show();
