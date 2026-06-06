@@ -17,7 +17,7 @@
 #include <QIODevice>
 #include <string_view>
 #include <QDir>
-
+#include <QDataStream>
 
 struct Config {
     std::string LocalProjectsDirectory;
@@ -60,10 +60,10 @@ void createFilesFromTransfer(const Config& cfg, std::string_view header, const Q
     struct projectFiles{ std::string name; qint64 size; };
     std::vector<projectFiles> projectFilesVector;
 
-    size_t cursor = 1;                          // skip leading '#'
+    size_t cursor = 1;
     size_t hash = header.find('#', cursor);
     int projectCount = std::stoi(std::string(header.substr(cursor, hash - cursor)));
-    cursor = hash + 1;                          // now at first file field
+    cursor = hash + 1;
 
     for (int i = 0; i < projectCount; ++i) {
         size_t colon = header.find(':', cursor);
@@ -141,7 +141,8 @@ void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects, 
 
         for (const auto& p : localProjects) {
 
-            QFile projectFile = QFile(p);
+            QString fullPath = QString::fromStdString((std::filesystem::path(cfg.LocalProjectsDirectory) / p).string());
+            QFile projectFile = QFile(fullPath);
             if (!projectFile.open(QIODevice::ReadOnly)) {
                 std::cout << "Client Error: could not open project: " << p.filename() << std::endl;
                 return;
@@ -234,6 +235,7 @@ int main(int argc, char *argv[]) {
             chunk += socket->readAll();
         }
         std::cout << initHeaderFromClient.toStdString() << std::endl;
+        std::cout << "chunk size: " << chunk.size() << std::endl;
         createFilesFromTransfer(config, initHeaderFromClient.toStdString(), chunk);
     });
 
