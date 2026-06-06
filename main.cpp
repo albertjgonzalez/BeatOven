@@ -15,9 +15,13 @@
 #include <QJsonObject>
 #include <QFile>
 #include <QIODevice>
+#include <string_view>
+#include <QDir>
+
 
 struct Config {
     std::string LocalProjectsDirectory;
+    std::string SharedProjectsDirectory;
     std::string connectString;
 };
 
@@ -44,7 +48,60 @@ void setConfigValues(Config& cfg) {
         if (key == "ConnectionString") {
             cfg.connectString = value;
         }
+        if (key == "LocalSharedProjectsDirectory") {
+            cfg.SharedProjectsDirectory = value;
+        }
     }
+}
+
+void createFilesFromTransfer(const Config& cfg, std::string_view header, const QByteArray& data) {
+    //std::cout << "Server: Full Header: " << header << std::endl;
+    //std::cout << "Server: Full Data: " << data.toStdString() << std::endl;
+
+    //std::cout << "Server Writing files: " << data.toStdString() << std::endl;
+
+    struct projectFiles{ std::string name; qint64 size; };
+    std::vector<projectFiles> projectFilesVector;
+
+    size_t cursor = 1;                          // skip leading '#'
+    size_t hash = header.find('#', cursor);
+    int projectCount = std::stoi(std::string(header.substr(cursor, hash - cursor)));
+    cursor = hash + 1;                          // now at first file field
+
+    for (int i = 0; i < projectCount; ++i) {
+        size_t colon = header.find(':', cursor);
+        size_t fieldEnd = header.find('#', colon);
+
+        std::string name = std::string(header.substr(cursor, colon - cursor));
+        qint64 size = std::stoll(std::string(header.substr(colon + 1, fieldEnd - colon - 1)));
+
+        projectFilesVector.push_back({name, size});
+        cursor = fieldEnd + 1;                  // advance past this field's '#'
+    }
+
+    std::ofstream output;
+    qint64 dataOffset{0};
+    QDir QsharedDir = QString(cfg.SharedProjectsDirectory.c_str());
+
+    for (const auto& f: projectFilesVector) {
+        auto fileBytes = data.mid(dataOffset, f.size);
+
+        QFile out(QsharedDir.filePath(f.name.c_str()));
+        if (!out.open(QIODevice::WriteOnly)) {
+            std::cout << "Server Error: could not write " << f.name << std::endl;
+            return;
+        }
+        out.write(fileBytes);
+        out.close();
+
+        dataOffset += f.size;
+    }
+
+    std::vector<std::string> projectNamesVector;
+    std::vector<QByteArray> projectBytesVector;
+
+    size_t start = 0;
+
 }
 
 void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects, Config& cfg) {
@@ -56,59 +113,43 @@ void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects, 
 
 	if (!socket.isValid()) std::cout << "Socket is not valid" << std::endl;
 	
-	std::cout << "Sending Local Projects: " << std::endl;
+    std::cout << "Client: Sending Local Projects: " << std::endl;
     if (socket.waitForConnected()) {
-        std::cout << "Socket Ready for connection" << std::endl;
+        std::cout << "Client: Socket Ready for connection" << std::endl;
+
+        //create header info
+        std::string header {"#"};
+        header += std::to_string(localProjects.size());
+
+        for (const auto& p : localProjects) {
+            std::cout << "Client: file: " << p.filename().string() << std::endl;
+            header += "#" + p.filename().string() + ":" + std::to_string(file_size(p));
+        }
+
+        //send header -> amount of projects, other meta info
+        socket.write(header.c_str(), header.size());
+        socket.waitForBytesWritten();
 
         if (socket.waitForReadyRead()) {
-            std::cout << "Socket waiting for read" << std::endl;
-
-            //eventually have token to validate session
-            QByteArray token = socket.readAll();
-            std::cout << token.toStdString() << std::endl;
-
-            //create header info
-            std::string header {"header"};
-            int count{0};
-
-            // for (const auto& p : localProjects) {
-            //     ++count;
-            //     QFile projectFolder = QFile(p);
-            // }
-
-            //send header -> amount of projects, other meta info
-            //header.append(std::to_string(count));
-
-            socket.write(header.c_str(), header.size());
-             socket.waitForBytesWritten();
-
-            // for (const auto& p : localProjects) {
-
-            //     QFile projectFile = QFile(p);
-            //     if (!projectFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            //         std::cout << "Error: could not open project: " << p.filename() << std::endl;
-            //         return;
-            //     }
-
-
-            //     while (!projectFile.atEnd()) {
-            //         QByteArray line = projectFile.readLine();
-            //         std::cout << line.toStdString() << std::endl;
-            //         socket.write(line);
-            //         socket.waitForBytesWritten();
-            //     }
-            //     //std::cout << p.relative_path() << std::endl;
-            // }
-
-            //all of projects sent
-            // std::string completedMessage {"this is the end bye."};
-
-            // socket.write(completedMessage.c_str());
-            //socket.waitForBytesWritten();
+            std::cout << "Client: Socket waiting for read" << std::endl;
+            QByteArray response = socket.readAll();
+            std::cout << "Client: " << response.toStdString() << std::endl;
         }
-        else {
-            std::cout << "Error: " << socket.error() << std::endl;
-        }
+
+            for (const auto& p : localProjects) {
+
+                QFile projectFile = QFile(p);
+                if (!projectFile.open(QIODevice::ReadOnly)) {
+                    std::cout << "Client Error: could not open project: " << p.filename() << std::endl;
+                    return;
+                }
+
+                while (!projectFile.atEnd()) {
+                    QByteArray block = projectFile.read(64 * 1024);
+                    socket.write(block);
+                    socket.waitForBytesWritten();
+                }
+            }
     }
 }
 
@@ -137,8 +178,6 @@ int main(int argc, char *argv[]) {
 
     setConfigValues(config);
 
-
-
     quint16 port {8000};
     QTcpServer server;
 
@@ -148,21 +187,24 @@ int main(int argc, char *argv[]) {
         std::cout << e.toStdString() << std::endl;
     }
 
-    QObject::connect(&server, &QTcpServer::newConnection, [&server](){
-        std::cout << "Connection Made." << std::endl;
+
+    QObject::connect(&server, &QTcpServer::newConnection, [&server, config](){
+        std::cout << "Server: Connection Made." << std::endl;
         auto socket = server.nextPendingConnection();
         if (!socket) { std::cout << "null socket" << std::endl; return; }
 
-        socket->write("Hello\n");
-        socket->waitForBytesWritten(30000);
         socket->waitForReadyRead();
-        QByteArray text = socket->readAll();
-            std::cout << text.toStdString() << std::endl;
-        //while (socket->canReadLine()) {
-        //    QByteArray text = socket->readLine();
-        //    std::cout << text.toStdString() << std::endl;
-        //}
+        QByteArray initHeaderFromClient = socket->readAll();
 
+        socket->write("Recieved Header\n");
+        socket->waitForBytesWritten();
+        socket->isReadable();
+        QByteArray chunk;
+        while (socket->waitForReadyRead()) {
+            chunk += socket->readAll();
+        }
+
+        createFilesFromTransfer(config, initHeaderFromClient.toStdString(), chunk);
     });
 
     auto localProjects = getLocalProjects(config);
