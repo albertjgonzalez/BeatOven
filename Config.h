@@ -6,5 +6,6 @@ struct Config {
     std::string SharedProjectsDirectory;
     std::string connectString;
 };
+void setConfigValues(Config& cfg);
 #endif // CONFIG_H
 
