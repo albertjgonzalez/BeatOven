@@ -14,6 +14,7 @@ qt_add_executable(BeatOven
     BeatOvenServer.cpp
     BeatOvenServer.h
     Config.h
+    BeatOvenClient.h BeatOvenClient.cpp
 
 )
 
