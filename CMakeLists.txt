@@ -17,6 +17,7 @@ qt_add_executable(BeatOven
     BeatOvenClient.h BeatOvenClient.cpp
     Config.cpp
     TransferWorker.h TransferWorker.cpp
+    ProjectFiles.h
 
 )
 

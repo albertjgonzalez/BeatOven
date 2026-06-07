@@ -5,27 +5,9 @@
 #include <QTcpSocket>
 #include <QDir>
 #include <QThread>
+#include "ProjectFiles.h"
 
-void createFilesFromTransfer(const Config& cfg, std::string_view header, const QByteArray& data) {
-    struct projectFiles{ std::string name; qint64 size; };
-    std::vector<projectFiles> projectFilesVector;
-
-    size_t cursor = 1;
-    size_t hash = header.find('#', cursor);
-    int projectCount = std::stoi(std::string(header.substr(cursor, hash - cursor)));
-    cursor = hash + 1;
-
-    for (int i = 0; i < projectCount; ++i) {
-        size_t colon = header.find(':', cursor);
-        size_t fieldEnd = header.find('#', colon);
-
-        std::string name = std::string(header.substr(cursor, colon - cursor));
-        qint64 size = std::stoll(std::string(header.substr(colon + 1, fieldEnd - colon - 1)));
-
-        projectFilesVector.push_back({name, size});
-        cursor = fieldEnd + 1;                  // advance past this field's '#'
-    }
-
+void createFilesFromTransfer(const Config& cfg, std::vector<projectFiles>& projectFilesVector, const QByteArray& data) {
     std::ofstream output;
     qint64 dataOffset{0};
     QDir QsharedDir = QString(cfg.SharedProjectsDirectory.c_str());
@@ -51,14 +33,13 @@ void createFilesFromTransfer(const Config& cfg, std::string_view header, const Q
     std::vector<QByteArray> projectBytesVector;
 
     size_t start = 0;
-
 }
 
 
 void runServer(QTcpServer& server,  Config& cfg) {
-
     auto socket = server.nextPendingConnection();
     if (!socket) return;
+    socket->setParent(nullptr);
 
     auto tw = new TransferWorker(socket, cfg);
     auto thread = new QThread;
@@ -71,35 +52,5 @@ void runServer(QTcpServer& server,  Config& cfg) {
     QObject::connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     QObject::connect(tw, &TransferWorker::finished, socket, &QTcpSocket::deleteLater);
     thread->start();
-
-
-    //----------------------- Just add logic to transferworker
-        // std::cout << "Server: Connection Made." << std::endl;
-        // auto socket = server.nextPendingConnection();
-        // if (!socket) { std::cout << "null socket" << std::endl; return; }
-
-        // socket->waitForReadyRead();
-
-        // QDataStream stream(socket);
-        // QByteArray initHeaderFromClient;
-        // stream.startTransaction();
-        // stream >> initHeaderFromClient;
-        // while (!stream.commitTransaction()) {
-        //     socket->waitForReadyRead();
-        //     stream.startTransaction();
-        //     stream >> initHeaderFromClient;
-        // }
-
-        // socket->write("Recieved Header\n");
-        // socket->waitForBytesWritten();
-        // socket->isReadable();
-        // QByteArray chunk;
-        // while (socket->waitForReadyRead()) {
-        //     chunk += socket->readAll();
-        // }
-        // std::cout << initHeaderFromClient.toStdString() << std::endl;
-        // std::cout << "chunk size: " << chunk.size() << std::endl;
-        // createFilesFromTransfer(cfg, initHeaderFromClient.toStdString(), chunk);
-
 }
 
