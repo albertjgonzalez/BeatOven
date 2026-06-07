@@ -1,8 +1,10 @@
 #include "BeatOvenServer.h"
+#include "TransferWorker.h"
 #include <iostream>
 #include <fstream>
 #include <QTcpSocket>
 #include <QDir>
+#include <QThread>
 
 void createFilesFromTransfer(const Config& cfg, std::string_view header, const QByteArray& data) {
     struct projectFiles{ std::string name; qint64 size; };
@@ -54,31 +56,50 @@ void createFilesFromTransfer(const Config& cfg, std::string_view header, const Q
 
 
 void runServer(QTcpServer& server,  Config& cfg) {
-    std::cout << "Server: Connection Made." << std::endl;
+
     auto socket = server.nextPendingConnection();
-    if (!socket) { std::cout << "null socket" << std::endl; return; }
+    if (!socket) return;
 
-    socket->waitForReadyRead();
+    auto tw = new TransferWorker(socket, cfg);
+    auto thread = new QThread;
+    tw->moveToThread(thread);
+    socket->moveToThread(thread);
 
-    QDataStream stream(socket);
-    QByteArray initHeaderFromClient;
-    stream.startTransaction();
-    stream >> initHeaderFromClient;
-    while (!stream.commitTransaction()) {
-        socket->waitForReadyRead();
-        stream.startTransaction();
-        stream >> initHeaderFromClient;
-    }
+    QObject::connect(thread, &QThread::started, tw, &TransferWorker::doTransfer);
+    QObject::connect(tw, &TransferWorker::finished, thread, &QThread::quit);
+    QObject::connect(tw, &TransferWorker::finished, tw, &TransferWorker::deleteLater);
+    QObject::connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+    QObject::connect(tw, &TransferWorker::finished, socket, &QTcpSocket::deleteLater);
+    thread->start();
 
-    socket->write("Recieved Header\n");
-    socket->waitForBytesWritten();
-    socket->isReadable();
-    QByteArray chunk;
-    while (socket->waitForReadyRead()) {
-        chunk += socket->readAll();
-    }
-    std::cout << initHeaderFromClient.toStdString() << std::endl;
-    std::cout << "chunk size: " << chunk.size() << std::endl;
-    createFilesFromTransfer(cfg, initHeaderFromClient.toStdString(), chunk);
+
+    //----------------------- Just add logic to transferworker
+        // std::cout << "Server: Connection Made." << std::endl;
+        // auto socket = server.nextPendingConnection();
+        // if (!socket) { std::cout << "null socket" << std::endl; return; }
+
+        // socket->waitForReadyRead();
+
+        // QDataStream stream(socket);
+        // QByteArray initHeaderFromClient;
+        // stream.startTransaction();
+        // stream >> initHeaderFromClient;
+        // while (!stream.commitTransaction()) {
+        //     socket->waitForReadyRead();
+        //     stream.startTransaction();
+        //     stream >> initHeaderFromClient;
+        // }
+
+        // socket->write("Recieved Header\n");
+        // socket->waitForBytesWritten();
+        // socket->isReadable();
+        // QByteArray chunk;
+        // while (socket->waitForReadyRead()) {
+        //     chunk += socket->readAll();
+        // }
+        // std::cout << initHeaderFromClient.toStdString() << std::endl;
+        // std::cout << "chunk size: " << chunk.size() << std::endl;
+        // createFilesFromTransfer(cfg, initHeaderFromClient.toStdString(), chunk);
+
 }
 

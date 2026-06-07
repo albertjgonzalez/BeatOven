@@ -63,7 +63,7 @@ void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects, 
         for (const auto& p : localProjects) {
             std::cout << "Client: file: " << p.string() << std::endl;
             auto pSize = std::filesystem::file_size(std::filesystem::path(cfg.LocalProjectsDirectory) / p);
-            header += "#" + p.string() + ":" + std::to_string(pSize);
+            header += "#" + std::filesystem::path(p).generic_string() + ":" + std::to_string(pSize);
         }
 
         //send header -> amount of projects, other meta info
