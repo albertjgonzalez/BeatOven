@@ -67,7 +67,6 @@ int main(int argc, char *argv[]) {
 
         QObject::connect(thread, &QThread::started, worker, &SendWorker::doSend);
         auto c = QObject::connect(worker, &SendWorker::progress, progressBar, [progressBar](qint64 pct){
-            std::cout << "UI slot got: " << pct << std::endl;
             progressBar->setValue(static_cast<int>(pct));
         });
         std::cout << "connected: " << (bool)c << std::endl;

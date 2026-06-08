@@ -45,9 +45,11 @@ void SendWorker::doSend() {
         }
 
         qint64 total = 0;
-        for (const auto& p : mProjects) {
+        for (const auto& p : mProjects)
             total += std::filesystem::file_size(std::filesystem::path(cfg.LocalProjectsDirectory) / p);
-            qint64 sent = 0;
+
+        qint64 sent = 0;
+        for (const auto& p : mProjects) {
             QString fullPath = QString::fromStdString((std::filesystem::path(cfg.LocalProjectsDirectory) / p).string());
             QFile projectFile = QFile(fullPath);
 
@@ -61,7 +63,8 @@ void SendWorker::doSend() {
                 socket.write(block);
                 socket.waitForBytesWritten();
                 sent += block.size();
-                qint64 pct = total ? 100 / total : 0;
+                qint64 pct = total ? 100 * sent / total : 0;
+                //std::cout << "total bytes: " << total << std::endl;
                 emit progress(pct);
             }
         }
