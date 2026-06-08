@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 find_package(Qt6 REQUIRED COMPONENTS Network)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 qt_standard_project_setup()
 
 qt_add_executable(BeatOven
@@ -18,8 +19,10 @@ qt_add_executable(BeatOven
     Config.cpp
     TransferWorker.h TransferWorker.cpp
     ProjectFiles.h
+    SendWorker.h SendWorker.cpp
 
 )
 
 target_link_libraries(BeatOven PRIVATE Qt6::Widgets)
 target_link_libraries(BeatOven PRIVATE Qt6::Network)
+target_link_libraries(BeatOven PRIVATE Qt6::Core)

@@ -1,9 +1,11 @@
 #include "BeatOvenClient.h"
+#include "SendWorker.h"
 #include <vector>
 #include <filesystem>
 #include <iostream>
 #include <QTcpSocket>
 #include <QFile>
+#include <QThread>
 
 std::vector<std::filesystem::path> createProjectSubDirectoryVector(const std::filesystem::path& D) {
     std::vector<std::filesystem::path> subD;
@@ -44,54 +46,13 @@ std::vector<std::filesystem::path> getLocalProjects(Config& cfg) {
 }
 
 void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects, Config& cfg) {
-    QTcpSocket socket;
-    QString hostName = QString::fromStdString(cfg.connectString);
-    quint16 port {8000};
+    auto worker = new SendWorker(localProjects, cfg);
+    auto thread = new QThread();
+    worker->moveToThread(thread);
+    QObject::connect(thread, &QThread::started, worker, &SendWorker::doSend);
+    QObject::connect(worker, &SendWorker::finished, thread, &QThread::quit);
+    QObject::connect(worker, &SendWorker::finished, worker, &SendWorker::deleteLater);
+    QObject::connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+    thread->start();
 
-    socket.connectToHost(hostName,port);
-
-    if (!socket.isValid()) std::cout << "Socket is not valid" << std::endl;
-
-    std::cout << "Client: Sending Local Projects: " << std::endl;
-    if (socket.waitForConnected()) {
-        std::cout << "Client: Socket Ready for connection" << std::endl;
-
-        //create header info
-        std::string header {"#"};
-        header += std::to_string(localProjects.size());
-
-        for (const auto& p : localProjects) {
-            std::cout << "Client: file: " << p.string() << std::endl;
-            auto pSize = std::filesystem::file_size(std::filesystem::path(cfg.LocalProjectsDirectory) / p);
-            header += "#" + std::filesystem::path(p).generic_string() + ":" + std::to_string(pSize);
-        }
-
-        //send header -> amount of projects, other meta info
-        QByteArray headerBytes = QByteArray::fromStdString(header);
-        QDataStream stream(&socket);
-        stream << headerBytes;   // writes length, then bytes
-        socket.waitForBytesWritten();
-
-        if (socket.waitForReadyRead()) {
-            std::cout << "Client: Socket waiting for read" << std::endl;
-            QByteArray response = socket.readAll();
-            std::cout << "Client: " << response.toStdString() << std::endl;
-        }
-
-        for (const auto& p : localProjects) {
-
-            QString fullPath = QString::fromStdString((std::filesystem::path(cfg.LocalProjectsDirectory) / p).string());
-            QFile projectFile = QFile(fullPath);
-            if (!projectFile.open(QIODevice::ReadOnly)) {
-                std::cout << "Client Error: could not open project: " << p.filename() << std::endl;
-                return;
-            }
-
-            while (!projectFile.atEnd()) {
-                QByteArray block = projectFile.read(64 * 1024);
-                socket.write(block);
-                socket.waitForBytesWritten();
-            }
-        }
-    }
 }

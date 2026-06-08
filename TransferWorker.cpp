@@ -54,7 +54,7 @@ void TransferWorker::doTransfer() {
     while (mSocket->waitForReadyRead()) {
         chunk += mSocket->readAll();
         qint64 pct = total ? chunk.size() * 100 / total : 0;
-        std::cout << "\rProgress: " << pct << "%" << std::flush;
+        std::cout << "\rServer Transfer Progress: " << pct << "%" << std::flush;
         emit progress(pct);
     }
 
