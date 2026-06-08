@@ -1,3 +1,7 @@
+#include "BeatOvenClient.h"
+#include "BeatOvenServer.h"
+#include "SendWorker.h"
+#include <QThread>
 #include <QApplication>
 #include <QWidget>
 #include <QLabel>
@@ -14,9 +18,7 @@
 #include <QIODevice>
 #include <QDir>
 #include <QDataStream>
-#include "BeatOvenClient.h"
-#include "BeatOvenServer.h"
-
+#include <QProgressBar>
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
@@ -44,16 +46,35 @@ int main(int argc, char *argv[]) {
     window.resize(400, 300);
 
     // Add a label inside a layout
+    // QLabel *label = new QLabel("Hello, World!");
+    //label->setAlignment(Qt::AlignCenter);
+    //layout->addWidget(label);
+
     QVBoxLayout *layout = new QVBoxLayout(&window);
-    QLabel *label = new QLabel("Hello, World!");
+
     QPushButton *button = new QPushButton("&Share");
 
-    label->setAlignment(Qt::AlignCenter);
-    layout->addWidget(label);
-    layout->addWidget(button);
+    QProgressBar *progressBar = new QProgressBar;
+    progressBar->setRange(0,100);
 
-    QObject::connect(button, &QPushButton::clicked, [&localProjects, &config](){
-            sendLocalProjects(localProjects, config);
+    layout->addWidget(button);
+    layout->addWidget(progressBar);
+
+    QObject::connect(button, &QPushButton::clicked, [&localProjects, &config, progressBar](){
+        auto worker = new SendWorker(localProjects, config);
+        auto thread = new QThread;
+        worker->moveToThread(thread);
+
+        QObject::connect(thread, &QThread::started, worker, &SendWorker::doSend);
+        auto c = QObject::connect(worker, &SendWorker::progress, progressBar, [progressBar](qint64 pct){
+            std::cout << "UI slot got: " << pct << std::endl;
+            progressBar->setValue(static_cast<int>(pct));
+        });
+        std::cout << "connected: " << (bool)c << std::endl;
+        QObject::connect(worker, &SendWorker::finished, thread, &QThread::quit);
+        QObject::connect(worker, &SendWorker::finished, worker, &SendWorker::deleteLater);
+        QObject::connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+        thread->start();
     });
 
     window.show();

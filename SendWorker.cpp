@@ -27,7 +27,7 @@ void SendWorker::doSend() {
         header += std::to_string(mProjects.size());
 
         for (const auto& p : mProjects) {
-            std::cout << "Client: file: " << p.string() << std::endl;
+            //std::cout << "Client: file: " << p.string() << std::endl;
             auto pSize = std::filesystem::file_size(std::filesystem::path(cfg.LocalProjectsDirectory) / p);
             header += "#" + std::filesystem::path(p).generic_string() + ":" + std::to_string(pSize);
         }
@@ -44,10 +44,13 @@ void SendWorker::doSend() {
             std::cout << "Client: " << response.toStdString() << std::endl;
         }
 
+        qint64 total = 0;
         for (const auto& p : mProjects) {
-
+            total += std::filesystem::file_size(std::filesystem::path(cfg.LocalProjectsDirectory) / p);
+            qint64 sent = 0;
             QString fullPath = QString::fromStdString((std::filesystem::path(cfg.LocalProjectsDirectory) / p).string());
             QFile projectFile = QFile(fullPath);
+
             if (!projectFile.open(QIODevice::ReadOnly)) {
                 std::cout << "Client Error: could not open project: " << p.filename() << std::endl;
                 return;
@@ -57,7 +60,11 @@ void SendWorker::doSend() {
                 QByteArray block = projectFile.read(64 * 1024);
                 socket.write(block);
                 socket.waitForBytesWritten();
+                sent += block.size();
+                qint64 pct = total ? 100 / total : 0;
+                emit progress(pct);
             }
         }
+        emit finished();
     }
 }
