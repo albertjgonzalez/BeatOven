@@ -12,10 +12,13 @@ BeatOvenServer::BeatOvenServer(Config& config) :
     mServer{ new QTcpServer }, cfg{ config }
 {
     std::cout << "Starting Server.." << std::endl;
+
     if (!mServer->listen(QHostAddress::Any, (quint16)cfg.Port)) {
         auto e = mServer->errorString();
         std::cout << e.toStdString() << std::endl;
     }
+    std::cout << mServer->serverAddress().toString().toStdString() << std::endl;
+    std::cout << "listening on port: " << mServer->serverPort()  << std::endl;
     QObject::connect(mServer, &QTcpServer::newConnection, [this](){
         runServer();
     });
@@ -52,7 +55,10 @@ void BeatOvenServer::createFilesFromTransfer(std::vector<projectFiles>& projectF
 
 void BeatOvenServer::runServer() {
     auto socket = mServer->nextPendingConnection();
-    if (!socket) return;
+    if (!socket){
+        std::cout << "null Socket" <<std::endl;
+        return;
+    }
     socket->setParent(nullptr);
 
     auto tw = new TransferWorker(socket, cfg, this);

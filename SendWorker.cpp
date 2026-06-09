@@ -69,5 +69,8 @@ void SendWorker::doSend() {
             }
         }
         emit finished();
+    } else {
+        std::cout << "Connect failed: " << socket.errorString().toStdString()
+        << " host=" << hostName.toStdString() << std::endl;
     }
 }
