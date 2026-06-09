@@ -33,7 +33,7 @@ void setConfigValues(Config& cfg) {
             cfg.connectString = value;
         }
         if (key == "Port") {
-            cfg.connectString = value;
+            cfg.Port = std::stoi(value);
         }
     }
 }
