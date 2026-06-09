@@ -3,8 +3,8 @@
 #include "ProjectFiles.h"
 #include <iostream>
 
-TransferWorker::TransferWorker(QTcpSocket* socket, Config& cfg) :
-                                mSocket{socket}, cfg(cfg)
+TransferWorker::TransferWorker(QTcpSocket* socket, Config& cfg,  BeatOvenServer* server) :
+    mSocket{socket}, cfg{cfg}, mServer{server}
 {}
 
 void TransferWorker::doTransfer() {
@@ -60,7 +60,7 @@ void TransferWorker::doTransfer() {
 
     // std::cout << initHeaderFromClient.toStdString() << std::endl;
     // std::cout << "chunk size: " << chunk.size() << std::endl;
-    createFilesFromTransfer(cfg, projectFilesVector, chunk);
+    mServer->createFilesFromTransfer(projectFilesVector, chunk);
 
     emit finished();
 }

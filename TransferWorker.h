@@ -1,7 +1,8 @@
 #ifndef TRANSFERWORKER_H
 #define TRANSFERWORKER_H
-#include <QTcpSocket>
 #include "Config.h"
+#include "BeatOvenServer.h"
+#include <QTcpSocket>
 
 class TransferWorker : public QObject
 {
@@ -9,8 +10,9 @@ class TransferWorker : public QObject
 public:
     QTcpSocket* mSocket;
     Config& cfg;
+    BeatOvenServer* mServer;
 
-    TransferWorker(QTcpSocket* socket, Config& cfg);
+    TransferWorker(QTcpSocket* socket, Config& cfg, BeatOvenServer* server);
 
 public slots:
     void doTransfer();

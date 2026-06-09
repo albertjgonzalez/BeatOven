@@ -26,11 +26,14 @@ void setConfigValues(Config& cfg) {
         if (key == "TempProjectsDirectory") { // for testing
             cfg.LocalProjectsDirectory = value;
         }
+        if (key == "LocalSharedProjectsDirectory") {
+            cfg.SharedProjectsDirectory = value;
+        }
         if (key == "ConnectionString") {
             cfg.connectString = value;
         }
-        if (key == "LocalSharedProjectsDirectory") {
-            cfg.SharedProjectsDirectory = value;
+        if (key == "Port") {
+            cfg.connectString = value;
         }
     }
 }

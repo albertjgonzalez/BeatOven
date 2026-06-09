@@ -21,7 +21,7 @@ std::vector<std::filesystem::path> createProjectSubDirectoryVector(const std::fi
             if(std::filesystem::is_directory(dir_entry))
                 continue;
 
-            subD.push_back(std::filesystem::relative(dir_entry, D));
+            subD.push_back(std::filesystem::relative(dir_entry, D.parent_path()));
             //std::cout << "Client: File Name is " << std::filesystem::relative(dir_entry, D) << std::endl;
         }
     } catch (const std::exception& e) {

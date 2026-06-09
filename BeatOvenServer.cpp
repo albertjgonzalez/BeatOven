@@ -1,13 +1,27 @@
 #include "BeatOvenServer.h"
 #include "TransferWorker.h"
+#include "ProjectFiles.h"
 #include <iostream>
 #include <fstream>
+#include <QTcpServer>
 #include <QTcpSocket>
 #include <QDir>
 #include <QThread>
-#include "ProjectFiles.h"
 
-void createFilesFromTransfer(const Config& cfg, std::vector<projectFiles>& projectFilesVector, const QByteArray& data) {
+BeatOvenServer::BeatOvenServer(Config& config) :
+    mServer{ new QTcpServer }, cfg{ config }
+{
+    std::cout << "Starting Server.." << std::endl;
+    if (!mServer->listen(QHostAddress::Any, (quint16)cfg.Port)) {
+        auto e = mServer->errorString();
+        std::cout << e.toStdString() << std::endl;
+    }
+    QObject::connect(mServer, &QTcpServer::newConnection, [this](){
+        runServer();
+    });
+}
+
+void BeatOvenServer::createFilesFromTransfer(std::vector<projectFiles>& projectFilesVector, const QByteArray& data) {
     std::ofstream output;
     qint64 dataOffset{0};
     QDir QsharedDir = QString(cfg.SharedProjectsDirectory.c_str());
@@ -36,12 +50,12 @@ void createFilesFromTransfer(const Config& cfg, std::vector<projectFiles>& proje
 }
 
 
-void runServer(QTcpServer& server,  Config& cfg) {
-    auto socket = server.nextPendingConnection();
+void BeatOvenServer::runServer() {
+    auto socket = mServer->nextPendingConnection();
     if (!socket) return;
     socket->setParent(nullptr);
 
-    auto tw = new TransferWorker(socket, cfg);
+    auto tw = new TransferWorker(socket, cfg, this);
     auto thread = new QThread;
     tw->moveToThread(thread);
     socket->moveToThread(thread);

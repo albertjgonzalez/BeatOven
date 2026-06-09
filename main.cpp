@@ -5,7 +5,6 @@
 #include <QWidget>
 #include <QLabel>
 #include <QVBoxLayout>
-#include <iostream>
 #include <QtNetwork/QTcpSocket>
 #include <QTcpServer>
 #include <QJsonObject>
@@ -21,38 +20,21 @@
 #include <QGridLayout>
 #include <QListWidget>
 #include <QListWidgetItem>
+#include <QMessageBox>
 
 int main(int argc, char *argv[]) {
+    //App backend setup section
     QApplication app(argc, argv);
     Config config;
     setConfigValues(config);
 
-    quint16 port {8000};
-    QTcpServer server;
-
-    std::cout << "Starting Server.." << std::endl;
-    if (!server.listen(QHostAddress::Any, port)) {
-        auto e = server.errorString();
-        std::cout << e.toStdString() << std::endl;
-    }
-
-    QObject::connect(&server, &QTcpServer::newConnection,[&server, &config](){
-        runServer(server, config);
-    });
-
+    //App frontend setup section
     QWidget window;
     window.setWindowTitle("Hello Qt");
     window.resize(400, 300);
 
-    // Add a label inside a layout
-    // QLabel *label = new QLabel("Hello, World!");
-    //label->setAlignment(Qt::AlignCenter);
-    //layout->addWidget(label);
-
     QGridLayout *layout = new QGridLayout(&window);
-
     QPushButton *button = new QPushButton("&Share");
-
     QProgressBar *progressBar = new QProgressBar;
     progressBar->setRange(0,100);
 
@@ -67,21 +49,27 @@ int main(int argc, char *argv[]) {
         QListWidgetItem *projectIcon = new QListWidgetItem();
         projectIcon->setText(QString::fromStdString(project.filename().string()));
         projectIcon->setIcon(icon);
+        projectIcon->setData(Qt::UserRole, QString::fromStdString(project.filename().string()));
         projectBox->addItem(projectIcon);
     }
-
-
 
     layout->addWidget(button,      0,0);
     layout->addWidget(progressBar, 1,0);
     layout->addWidget(projectBox,  2,0);
 
+    //Launch App server
+    BeatOvenServer *appServer = new BeatOvenServer(config);
 
-    std::string projectName = {"26-1.2 Project"};
-    auto projectToTransfer = getProjectForTransfer(config, projectName);
+    QObject::connect(projectBox, &QListWidget::itemClicked, [layout, &config, progressBar](QListWidgetItem* item){
+        std::string name = item->data(Qt::UserRole).toString().toStdString();
 
-    QObject::connect(button, &QPushButton::clicked, [&projectToTransfer, &config, progressBar](){
-        sendLocalProject(projectToTransfer, config, progressBar);
+        auto reply = QMessageBox::question(nullptr, "Confirm Transfer",
+                                           QString::fromStdString("Send project: " + name + "?"));
+
+        if (reply == QMessageBox::Yes) {
+            auto projectToTransfer = getProjectForTransfer(config, name);
+            sendLocalProject(projectToTransfer, config, progressBar);
+        }
     });
 
     window.show();

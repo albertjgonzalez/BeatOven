@@ -1,10 +1,18 @@
 #ifndef BEATOVENSERVER_H
 #define BEATOVENSERVER_H
-#include <QTcpServer>
 #include "Config.h"
 #include "ProjectFiles.h"
+#include <QTcpServer>
 
-void createFilesFromTransfer(const Config& cfg, std::vector<projectFiles>& projectFilesVector, const QByteArray& data);
+class BeatOvenServer {
 
-void runServer(QTcpServer& server, Config& cfg);
+public:
+
+    QTcpServer* mServer;
+    Config& cfg;
+
+    BeatOvenServer(Config& config);
+    void runServer();
+    void createFilesFromTransfer(std::vector<projectFiles>& projectFilesVector, const QByteArray& data);
+};
 #endif // BEATOVENSERVER_H
