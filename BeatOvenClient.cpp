@@ -6,6 +6,7 @@
 #include <QTcpSocket>
 #include <QFile>
 #include <QThread>
+#include <QProgressBar>
 
 std::vector<std::filesystem::path> createProjectSubDirectoryVector(const std::filesystem::path& D) {
     std::vector<std::filesystem::path> subD;
@@ -30,14 +31,22 @@ std::vector<std::filesystem::path> createProjectSubDirectoryVector(const std::fi
     return subD;
 }
 
-std::vector<std::filesystem::path> getLocalProjects(Config& cfg) {
+std::vector<std::filesystem::path> getProjectForTransfer(Config& cfg, std::string_view projectName) {
     std::vector<std::filesystem::path> localProjectsVector;
     auto localProjects = std::filesystem::path(cfg.LocalProjectsDirectory);
     if(std::filesystem::is_directory(localProjects)) {
         std::cout << localProjects.relative_path() << " is a directory" << std::endl;
+        std::vector<std::filesystem::path> mappedProjectsVector;
 
-        auto mappedProjectsVector = createProjectSubDirectoryVector(localProjects);
-        return mappedProjectsVector;
+        for (auto const& project : std::filesystem::directory_iterator(localProjects)) {
+            if (std::filesystem::is_directory(project) && std::filesystem::path(project).filename() == projectName) {
+                mappedProjectsVector = createProjectSubDirectoryVector(project);
+                return mappedProjectsVector;
+            }
+        }
+
+        if (mappedProjectsVector.empty())
+            std::cout << "Error: Could not locate " << projectName << std::endl;
     }
     else
         std::cout << localProjects.relative_path() << " is a not directory" << std::endl;
@@ -45,11 +54,28 @@ std::vector<std::filesystem::path> getLocalProjects(Config& cfg) {
     return localProjectsVector;
 }
 
-void sendLocalProjects(const std::vector<std::filesystem::path>& localProjects, Config& cfg) {
+std::vector<std::filesystem::path> getLocalProjectsVector(std::filesystem::path& projectsFolder) {
+    std::vector<std::filesystem::path> localProjectsFolder;
+
+    if (!std::filesystem::is_directory(projectsFolder))
+        std::cout << projectsFolder.filename() << " is not a directory" << std::endl;
+
+    for (const auto& project : std::filesystem::directory_iterator(projectsFolder)) {
+        localProjectsFolder.push_back(project);
+    }
+
+    return localProjectsFolder;
+}
+
+void sendLocalProject(const std::vector<std::filesystem::path>& localProjects, Config& cfg, QProgressBar* progressBar) {
     auto worker = new SendWorker(localProjects, cfg);
     auto thread = new QThread();
     worker->moveToThread(thread);
+
     QObject::connect(thread, &QThread::started, worker, &SendWorker::doSend);
+    QObject::connect(worker, &SendWorker::progress, progressBar, [progressBar](qint64 pct){
+        progressBar->setValue(static_cast<int>(pct));
+    });
     QObject::connect(worker, &SendWorker::finished, thread, &QThread::quit);
     QObject::connect(worker, &SendWorker::finished, worker, &SendWorker::deleteLater);
     QObject::connect(thread, &QThread::finished, thread, &QThread::deleteLater);

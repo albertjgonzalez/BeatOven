@@ -1,6 +1,5 @@
 #include "BeatOvenClient.h"
 #include "BeatOvenServer.h"
-#include "SendWorker.h"
 #include <QThread>
 #include <QApplication>
 #include <QWidget>
@@ -19,11 +18,13 @@
 #include <QDir>
 #include <QDataStream>
 #include <QProgressBar>
+#include <QGridLayout>
+#include <QListWidget>
+#include <QListWidgetItem>
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     Config config;
-
     setConfigValues(config);
 
     quint16 port {8000};
@@ -39,8 +40,6 @@ int main(int argc, char *argv[]) {
         runServer(server, config);
     });
 
-    auto localProjects = getLocalProjects(config);
-
     QWidget window;
     window.setWindowTitle("Hello Qt");
     window.resize(400, 300);
@@ -50,30 +49,39 @@ int main(int argc, char *argv[]) {
     //label->setAlignment(Qt::AlignCenter);
     //layout->addWidget(label);
 
-    QVBoxLayout *layout = new QVBoxLayout(&window);
+    QGridLayout *layout = new QGridLayout(&window);
 
     QPushButton *button = new QPushButton("&Share");
 
     QProgressBar *progressBar = new QProgressBar;
     progressBar->setRange(0,100);
 
-    layout->addWidget(button);
-    layout->addWidget(progressBar);
+    QListWidget *projectBox = new QListWidget();
+    projectBox->setViewMode(QListView::IconMode);
 
-    QObject::connect(button, &QPushButton::clicked, [&localProjects, &config, progressBar](){
-        auto worker = new SendWorker(localProjects, config);
-        auto thread = new QThread;
-        worker->moveToThread(thread);
+    auto localProjectsDirectory = std::filesystem::path(config.LocalProjectsDirectory);
+    auto projectsList = getLocalProjectsVector(localProjectsDirectory);
+    QIcon icon("C:/Users/Left Ear/source/repos/BeatOvenHost/ProjectCube.png");
 
-        QObject::connect(thread, &QThread::started, worker, &SendWorker::doSend);
-        auto c = QObject::connect(worker, &SendWorker::progress, progressBar, [progressBar](qint64 pct){
-            progressBar->setValue(static_cast<int>(pct));
-        });
-        std::cout << "connected: " << (bool)c << std::endl;
-        QObject::connect(worker, &SendWorker::finished, thread, &QThread::quit);
-        QObject::connect(worker, &SendWorker::finished, worker, &SendWorker::deleteLater);
-        QObject::connect(thread, &QThread::finished, thread, &QThread::deleteLater);
-        thread->start();
+    for (const auto& project : projectsList) {
+        QListWidgetItem *projectIcon = new QListWidgetItem();
+        projectIcon->setText(QString::fromStdString(project.filename().string()));
+        projectIcon->setIcon(icon);
+        projectBox->addItem(projectIcon);
+    }
+
+
+
+    layout->addWidget(button,      0,0);
+    layout->addWidget(progressBar, 1,0);
+    layout->addWidget(projectBox,  2,0);
+
+
+    std::string projectName = {"26-1.2 Project"};
+    auto projectToTransfer = getProjectForTransfer(config, projectName);
+
+    QObject::connect(button, &QPushButton::clicked, [&projectToTransfer, &config, progressBar](){
+        sendLocalProject(projectToTransfer, config, progressBar);
     });
 
     window.show();

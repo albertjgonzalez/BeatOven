@@ -20,6 +20,7 @@ qt_add_executable(BeatOven
     TransferWorker.h TransferWorker.cpp
     ProjectFiles.h
     SendWorker.h SendWorker.cpp
+    images.qrc
 
 )
 
