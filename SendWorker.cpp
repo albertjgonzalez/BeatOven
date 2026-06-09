@@ -12,7 +12,7 @@ SendWorker::SendWorker(std::vector<std::filesystem::path> projects, Config& cfg)
 void SendWorker::doSend() {
     QTcpSocket socket;
     QString hostName = QString::fromStdString(cfg.connectString);
-    quint16 port {8000};
+    quint16 port = (quint16)cfg.Port;
 
     socket.connectToHost(hostName,port);
 

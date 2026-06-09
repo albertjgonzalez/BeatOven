@@ -51,12 +51,14 @@ void TransferWorker::doTransfer() {
     for (const auto& f : projectFilesVector) total += f.size;
 
     QByteArray chunk;
-    while (mSocket->waitForReadyRead()) {
+    while (chunk.size() < total) {
+        if (!mSocket->waitForReadyRead(30000)) break;   // wait for data; bail on timeout
         chunk += mSocket->readAll();
         qint64 pct = total ? chunk.size() * 100 / total : 0;
         std::cout << "\rServer Transfer Progress: " << pct << "%" << std::flush;
         emit progress(pct);
     }
+    std::cout << "\nreceived " << chunk.size() << " of " << total << std::endl;
 
     // std::cout << initHeaderFromClient.toStdString() << std::endl;
     // std::cout << "chunk size: " << chunk.size() << std::endl;
