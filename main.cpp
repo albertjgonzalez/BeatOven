@@ -1,5 +1,6 @@
 #include "BeatOvenClient.h"
 #include "BeatOvenServer.h"
+#include <iostream>
 #include <QThread>
 #include <QApplication>
 #include <QWidget>
@@ -21,10 +22,32 @@
 #include <QListWidget>
 #include <QListWidgetItem>
 #include <QMessageBox>
+#include <QSslSocket>
 
 int main(int argc, char *argv[]) {
     //App backend setup section
     QApplication app(argc, argv);
+    // Phase 0: force the OpenSSL TLS backend so Fedora and Windows behave identically.
+    // Windows Qt 6 may otherwise default to Schannel, which breaks our pinning assumptions.
+    if (!QSslSocket::availableBackends().contains(QStringLiteral("openssl"))) {
+        std::cout << "FATAL: Qt OpenSSL TLS plugin unavailable. Backends found: "
+                  << QSslSocket::availableBackends().join(", ").toStdString() << std::endl;
+        QMessageBox::critical(nullptr, "BeatOven",
+                              "The OpenSSL TLS backend for Qt is not installed. Secure transfers cannot work.");
+        return 1;
+    }
+    QSslSocket::setActiveBackend(QStringLiteral("openssl"));
+    if (!QSslSocket::supportsSsl()) {
+        std::cout << "FATAL: OpenSSL runtime libraries not found at runtime." << std::endl;
+        QMessageBox::critical(nullptr, "BeatOven",
+                              "OpenSSL libraries could not be loaded. On Windows, place libssl-3-x64.dll and "
+                              "libcrypto-3-x64.dll next to BeatOven.exe.");
+        return 1;
+    }
+    std::cout << "TLS backend: " << QSslSocket::activeBackend().toStdString()
+              << " (" << QSslSocket::sslLibraryVersionString().toStdString() << ")" << std::endl;
+
+
     Config config;
     setConfigValues(config);
 

@@ -13,7 +13,7 @@ BeatOvenServer::BeatOvenServer(Config& config) :
 {
     std::cout << "Starting Server.." << std::endl;
 
-    if (!mServer->listen(QHostAddress::Any, (quint16)cfg.Port)) {
+    if (!mServer->listen(QHostAddress::AnyIPv4, (quint16)cfg.Port)) {
         auto e = mServer->errorString();
         std::cout << e.toStdString() << std::endl;
     }
