@@ -27,8 +27,9 @@
 int main(int argc, char *argv[]) {
     //App backend setup section
     QApplication app(argc, argv);
-    // Phase 0: force the OpenSSL TLS backend so Fedora and Windows behave identically.
-    // Windows Qt 6 may otherwise default to Schannel, which breaks our pinning assumptions.
+    QCoreApplication::setApplicationName("BeatOven");
+
+    //OpenSSL TLS backend
     if (!QSslSocket::availableBackends().contains(QStringLiteral("openssl"))) {
         std::cout << "FATAL: Qt OpenSSL TLS plugin unavailable. Backends found: "
                   << QSslSocket::availableBackends().join(", ").toStdString() << std::endl;
@@ -47,6 +48,13 @@ int main(int argc, char *argv[]) {
     std::cout << "TLS backend: " << QSslSocket::activeBackend().toStdString()
               << " (" << QSslSocket::sslLibraryVersionString().toStdString() << ")" << std::endl;
 
+
+    // Identity identity = Identity::loadOrCreate();
+    // if (!identity.isValid()) {
+    //     QMessageBox::critical(nullptr, "BeatOven",
+    //                           "Could not load or create the peer identity. See console output.");
+    //     return 1;
+    // }
 
     Config config;
     setConfigValues(config);
